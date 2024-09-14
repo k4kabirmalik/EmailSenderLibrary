@@ -13,6 +13,12 @@ public class EmailSender(EmailConfiguration emailConfiguration) : IEmailSender
         Send(emailMessage);
     }
 
+    public async Task SendEmailAsync(EmailInfo emailInfo)
+    {
+        var emailMessage = CreateEmailMessage(emailInfo);
+        await SendAsync(emailMessage);
+    }
+
     private MimeMessage CreateEmailMessage(EmailInfo emailInfo)
     {
         var emailMessage = new MimeMessage();
@@ -43,7 +49,28 @@ public class EmailSender(EmailConfiguration emailConfiguration) : IEmailSender
             client.Disconnect(true);
             client.Dispose();
         }
+    }
 
+    private async Task SendAsync(MimeMessage emailMessage)
+    {
+        using var client = new SmtpClient();
+        try
+        {
+            await client.ConnectAsync(emailConfiguration.Host, emailConfiguration.Port, emailConfiguration.UseSsl);
+            client.AuthenticationMechanisms.Remove("XOAUTH2");
+            await client.AuthenticateAsync(emailConfiguration.UserName, emailConfiguration.Password);
 
+            await client.SendAsync(emailMessage);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            throw;
+        }
+        finally
+        {
+            await client.DisconnectAsync(true);
+            client.Dispose();
+        }
     }
 }
