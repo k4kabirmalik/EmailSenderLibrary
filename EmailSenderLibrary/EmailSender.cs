@@ -19,7 +19,7 @@ public class EmailSender(EmailConfiguration emailConfiguration) : IEmailSender
         emailMessage.From.Add(new MailboxAddress(emailConfiguration.DisplayName, emailConfiguration.From));
         emailMessage.To.AddRange(emailInfo.SendTo.Select(ma => new MailboxAddress(ma.DisplayName, ma.Address)));
         emailMessage.Subject = emailInfo.MailSubject;
-        emailMessage.Body = new TextPart(MimeKit.Text.TextFormat.Text) { Text = emailInfo.MailBody };
+        emailMessage.Body = new TextPart(MimeKit.Text.TextFormat.Html) { Text = emailInfo.MailBody };
         return emailMessage;
     }
     private void Send(MimeMessage emailMessage)
