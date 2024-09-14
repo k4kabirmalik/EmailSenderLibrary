@@ -25,7 +25,24 @@ public class EmailSender(EmailConfiguration emailConfiguration) : IEmailSender
         emailMessage.From.Add(new MailboxAddress(emailConfiguration.DisplayName, emailConfiguration.From));
         emailMessage.To.AddRange(emailInfo.SendTo.Select(ma => new MailboxAddress(ma.DisplayName, ma.Address)));
         emailMessage.Subject = emailInfo.MailSubject;
-        emailMessage.Body = new TextPart(MimeKit.Text.TextFormat.Html) { Text = emailInfo.MailBody };
+        var bodyBuilder = new BodyBuilder { HtmlBody = emailInfo.MailBody };
+
+        if (emailInfo.Attachments != null && emailInfo.Attachments.Count > 0)
+        {
+            byte[] fileBytes;
+
+            foreach (var attachment in emailInfo.Attachments)
+            {
+                using (var ms = new MemoryStream())
+                {
+                    attachment.CopyTo(ms);
+                    fileBytes = ms.ToArray();
+                }
+                bodyBuilder.Attachments.Add(attachment.FileName, fileBytes, ContentType.Parse(attachment.ContentType));
+            }
+        }
+
+        emailMessage.Body = bodyBuilder.ToMessageBody();
         return emailMessage;
     }
     private void Send(MimeMessage emailMessage)
