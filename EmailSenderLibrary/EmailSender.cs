@@ -2,17 +2,30 @@ using MailKit.Net.Smtp;
 using MimeKit;
 
 namespace EmailSenderLibrary;
-
+/// <summary>
+/// This class implements the IEmailSender interface to send email message
+/// </summary>
+/// <param name="emailConfiguration">the <see cref="EmailConfiguration"/> that represent the email configuration of sender such as username, display name, password</param>
 public class EmailSender(EmailConfiguration emailConfiguration) : IEmailSender
 {
     private readonly EmailConfiguration emailConfiguration = emailConfiguration;
 
+    /// <summary>
+    /// The SendEmail function creates an email message using the provided <see cref="EmailInfo"/> and sends it.
+    /// </summary>
+    /// <param name="emailInfo">The <see cref="EmailInfo"/> parameter likely contains information needed to send an
+    /// email, such as the recipient's email address, subject, body, attachments, etc.</param>
     public void SendEmail(EmailInfo emailInfo)
     {
         var emailMessage = CreateEmailMessage(emailInfo);
         Send(emailMessage);
     }
 
+    /// <summary>
+    /// The SendEmailAsync function create an email message using the provided <see cref="EmailInfo"/>  sends an email asynchronously.
+    /// </summary>
+    /// <param name="emailInfo">The <see cref="EmailInfo"/> parameter likely contains information needed to send an
+    /// email, such as the recipient's email address, subject, body, attachments, etc.</param>
     public async Task SendEmailAsync(EmailInfo emailInfo)
     {
         var emailMessage = CreateEmailMessage(emailInfo);
