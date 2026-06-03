@@ -1,138 +1,150 @@
-# Getting Started
+# EmailSenderLibrary
 
-This class library is used to send emails from asp.net core project
+A high-performance, transport-agnostic .NET 10 class library for sending emails using MailKit.
 
 ## Table of Contents
 
-- Configure
-- Usage
-- Example
-- License
-- Contact
+- [Requirements](#requirements)
+
+- [Configuration](#configure)
+
+- [Usage](#usage)
+
+- [Working with Attachments](#working-with-attachments)
+
+- [Example Integration](#example-integration)
+
+- [License](#license)
+
+## Requirements
+
+- Framework: .NET 10+
+
+- Engine: MailKit & MimeKit
 
 ## Configure
 
-Initialize email configuration by using EmailConfiguration class
+Initialize your SMTP settings using the `SmtpOptions` class.
 
 ```C#
-var emailConfiguration = new EmailConfiguration
+var smtpOptions = new SmtpOptions
 {
-    DisplayName = "SenderName",
-    From = "SenderEmail@example.com",
+    DisplayName = "Sender Name",
+    From = "sender@example.com",
     Host = "smtp.example.com",
     Port = 465,
-    Username = "SenderUsername",
-    Password = "SenderPassword",
+    UserName = "YourUsername",
+    Password = "YourPassword",
     UseSsl = true
 };
 ```
 
 ## Usage
 
-Use EmailInfo class to create email message. This class constructor accept four arguments first one is list of email address, second email subject, third email body in string format the last attachment if any
+### 1. Create the Message
+
+Use the `EmailInfo` class to define your recipients, subject, and content.
 
 ```C#
- var newMessage = new EmailInfo(
-     ["username@domain.com"],
-     "Test Message async",
-     string.Format($"<h1 style=\"text-color:red\">This is test message by {_emailSender}</h1>"),
-     null);
+var recipients = new List<string> { "user@domain.com" };
+var subject = "Tournament Update";
+var body = "<h1>Match starts at 5 PM</h1>";
+
+var email = new EmailInfo(recipients, subject, body, null);
 ```
 
-Use EmailSender class to send email message. This class implement IEmailSender interface.
+### 2. Send the Email
+
+The `EmailSender` class handles both synchronous and asynchronous operations.
 
 ```C#
-private readonly IEmailSender _emailSender;
+// Synchronous
+_emailSender.SendEmail(email);
 
- // Send email
- _emailSender.SendEmail(newMessage);
-
- // Send email asynchronously
- await _emailSender.SendEmailAsync(newMessage);
+// Asynchronous (Recommended)
+await _emailSender.SendEmailAsync(email);
 ```
 
-To send attachment use FormFileCollection
+## Working with Attachments
+
+To keep the core logic clean and decoupled from ASP.NET Core, this library uses a custom `EmailAttachment` class.
+
+### Manual Attachment Creation
 
 ```C#
-var files = Request.Form.Files.Any() ? Request.Form.Files : new FormFileCollection();
+var attachment = new EmailAttachment
+{
+    FileName = "report.pdf",
+    ContentType = "application/pdf",
+    ContentStream = System.IO.File.OpenRead("path/to/file.pdf")
+};
 
- var newMessage = new EmailInfo(
-     ["username@domain.com"],
-     "Test Message async",
-     string.Format($"<h1 style=\"text-color:red\">This is test message by {_emailSender}</h1>"),
-     files);
-
-// Send email
- _emailSender.SendEmail(newMessage);
-
- // Send email asynchronously
- await _emailSender.SendEmailAsync(newMessage);
+var email = new EmailInfo(recipients, subject, body, [attachment]);
 ```
 
-## Example
+### Converting from IFormFile (Web API)
 
-- Crate an Asp Web API Project.
-- add this EmailSenderLibrary to project and reference it in main project
-- add the following setting in appsettings.json file
+If you are using this in an API project, map your uploaded files to the `EmailAttachment` model:
 
-```JSON
-"EmailConfiguration": {
-  "DisplayName": "Kabir Malik",
-  "From": "kabirunofficial@gmail.com",
+```c#
+var attachments = Request.Form.Files.Select(f => new EmailAttachment
+{
+    FileName = f.FileName,
+    ContentType = f.ContentType,
+    ContentStream = f.OpenReadStream()
+});
+```
+
+## Example Integration
+
+### 1. AppSettings Configuration
+
+```json
+"SmtpOptions": {
+  "DisplayName": "Admin",
+  "From": "admin@tournament.com",
   "Host": "smtp.gmail.com",
   "Port": 465,
-  "Username": "kabirunofficial@gmail.com",
-  "password": "customPassword",
+  "UserName": "admin@tournament.com",
+  "Password": "your-app-password",
   "UseSsl": true
 }
 ```
 
-In program.cs file register services
+### 2. Dependency Injection (`Program.cs`)
 
-```C#
-var emailConfig = builder.Configuration.GetSection("EmailConfiguration").Get<EmailConfiguration>();
-builder.Services.AddSingleton<EmailConfiguration>(emailConfig);
+```c#
+var smtpConfig = builder.Configuration.GetSection("SmtpOptions").Get<SmtpOptions>();
+
+builder.Services.AddSingleton(smtpConfig);
 builder.Services.AddScoped<IEmailSender, EmailSender>();
-builder.Services.Configure<FormOptions>(options =>
-{
-    options.ValueLengthLimit = int.MaxValue;
-    options.MultipartBodyLengthLimit = int.MaxValue;
-    options.MemoryBufferThreshold = int.MaxValue;
-});
-
 ```
 
-- In the class that will use to send email define IEmailSender
+### 3. Usage in Controller
 
-```C#
-private readonly IEmailSender _emailSender;
-
-public WeatherForecastController(IEmailSender emailSender)
+```c#
+[HttpPost]
+public async Task<IActionResult> SendNotification()
 {
-    _emailSender = emailSender; ;
+    // Map web files to Core-friendly EmailAttachments
+    var attachments = Request.Form.Files.Select(f => new EmailAttachment
+    {
+        FileName = f.FileName,
+        ContentType = f.ContentType,
+        ContentStream = f.OpenReadStream()
+    }).ToList();
+
+    var email = new EmailInfo(
+        ["player@example.com"],
+        "Welcome!",
+        "<p>Glad to have you.</p>",
+        attachments
+    );
+
+    await _emailSender.SendEmailAsync(email);
+    return Ok();
 }
 ```
-
-- call email sender functions to send email
-
-```C#
-public async Task Post()
-{
-    var files = Request.Form.Files.Any() ? Request.Form.Files : new FormFileCollection();
-
-    var newMessage = new EmailInfo(
-                    ["username@domain.com"],
-                    "Test Message async",
-                    string.Format($"<h1 style=\"text-color:red\">This is test message by {_emailSender}</h1>"),
-                    files);
-
-    // Send email
-    _emailSender.SendEmail(newMessage);
-
-    // Send email asynchronously
-    await _emailSender.SendEmailAsync(newMessage);
-}
-````
 
 ## License
 
@@ -140,5 +152,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) f
 
 ## Contact
 
-Email: <k4kabirmalik@outlook.com>\
-Github: [Kabir Malik](https://github.com/k4kabirmalik)
+- Email: [Send Email](mailto:31293295+k4kabirmalik@users.noreply.github.com)
+- Github: [Kabir Malik](https://github.com/k4kabirmalik)

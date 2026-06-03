@@ -3,9 +3,9 @@
 namespace EmailSenderLibrary;
 
 /// <summary>
-/// The EmailConfiguration class defines properties for configuring email settings including display name, sender email address, host, port, username, password, and SSL usage.
+/// The SmtpOptions class defines properties for configuring email settings including display name, sender email address, host, port, username, password, and SSL usage.
 /// </summary>
-public class EmailConfiguration
+public class SmtpOptions
 {
     /// <summary>
     ///The DisplayName property is the name of the email sender that will appear in the receiver's email client.
@@ -22,7 +22,7 @@ public class EmailConfiguration
     /// </summary>
     public required string Host { get; set; }
     /// <summary>
-    /// Port is the logical address of the server tha handles the delivery of email messages.
+    /// Port is the logical address of the server to handles the delivery of email messages.
     /// </summary>
     public required int Port { get; set; }
     /// <summary>

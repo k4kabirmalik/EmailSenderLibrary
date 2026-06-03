@@ -3,5 +3,6 @@
         "appsettings",
         "kabirmalik",
         "XOAUTH"
-    ]
+    ],
+    "autoHide.autoHideSideBar": false
 }

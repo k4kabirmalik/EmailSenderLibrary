@@ -5,11 +5,9 @@ namespace EmailSenderLibrary;
 /// <summary>
 /// This class implements the IEmailSender interface to send email message
 /// </summary>
-/// <param name="emailConfiguration">the <see cref="EmailConfiguration"/> that represent the email configuration of sender such as username, display name, password</param>
-public class EmailSender(EmailConfiguration emailConfiguration) : IEmailSender
+/// <param name="smtpOptions">the <see cref="SmtpOptions"/> that represent the email configuration of sender such as username, display name, password</param>
+public class EmailSender(SmtpOptions smtpOptions) : IEmailSender
 {
-    private readonly EmailConfiguration emailConfiguration = emailConfiguration;
-
     /// <summary>
     /// The SendEmail function creates an email message using the provided <see cref="EmailInfo"/> and sends it.
     /// </summary>
@@ -35,23 +33,28 @@ public class EmailSender(EmailConfiguration emailConfiguration) : IEmailSender
     private MimeMessage CreateEmailMessage(EmailInfo emailInfo)
     {
         var emailMessage = new MimeMessage();
-        emailMessage.From.Add(new MailboxAddress(emailConfiguration.DisplayName, emailConfiguration.From));
+        emailMessage.From.Add(new MailboxAddress(smtpOptions.DisplayName, smtpOptions.From));
         emailMessage.To.AddRange(emailInfo.SendTo.Select(ma => new MailboxAddress(ma.DisplayName, ma.Address)));
         emailMessage.Subject = emailInfo.MailSubject;
+
         var bodyBuilder = new BodyBuilder { HtmlBody = emailInfo.MailBody };
 
-        if (emailInfo.Attachments != null && emailInfo.Attachments.Count > 0)
+        if (emailInfo.Attachments != null && emailInfo.Attachments.Any())
         {
-            byte[] fileBytes;
-
             foreach (var attachment in emailInfo.Attachments)
             {
-                using (var ms = new MemoryStream())
+                if (attachment.ContentStream == Stream.Null) continue;
+
+                if (attachment.ContentStream.CanSeek)
                 {
-                    attachment.CopyTo(ms);
-                    fileBytes = ms.ToArray();
+                    attachment.ContentStream.Position = 0;
                 }
-                bodyBuilder.Attachments.Add(attachment.FileName, fileBytes, ContentType.Parse(attachment.ContentType));
+
+                bodyBuilder.Attachments.Add(
+                    attachment.FileName,
+                    attachment.ContentStream,
+                    ContentType.Parse(attachment.ContentType)
+                );
             }
         }
 
@@ -63,9 +66,9 @@ public class EmailSender(EmailConfiguration emailConfiguration) : IEmailSender
         using var client = new SmtpClient();
         try
         {
-            client.Connect(emailConfiguration.Host, emailConfiguration.Port, emailConfiguration.UseSsl);
+            client.Connect(smtpOptions.Host, smtpOptions.Port, smtpOptions.UseSsl);
             client.AuthenticationMechanisms.Remove("XOAUTH2");
-            client.Authenticate(emailConfiguration.UserName, emailConfiguration.Password);
+            client.Authenticate(smtpOptions.UserName, smtpOptions.Password);
 
             client.Send(emailMessage);
         }
@@ -86,9 +89,9 @@ public class EmailSender(EmailConfiguration emailConfiguration) : IEmailSender
         using var client = new SmtpClient();
         try
         {
-            await client.ConnectAsync(emailConfiguration.Host, emailConfiguration.Port, emailConfiguration.UseSsl);
+            await client.ConnectAsync(smtpOptions.Host, smtpOptions.Port, smtpOptions.UseSsl);
             client.AuthenticationMechanisms.Remove("XOAUTH2");
-            await client.AuthenticateAsync(emailConfiguration.UserName, emailConfiguration.Password);
+            await client.AuthenticateAsync(smtpOptions.UserName, smtpOptions.Password);
 
             await client.SendAsync(emailMessage);
         }
